@@ -16,8 +16,9 @@
 import argparse
 import time
 import threading
-from os import walk
+from os import path, walk
 import numpy
+import alsaaudio
 
 from aiy.board import Board
 from aiy.voice.audio import AudioFormat
@@ -37,40 +38,46 @@ def main():
 
     pygame.init()
     pygame.mixer.init()
-    pygame.mixer.music.set_volume(0.4)
+
+    mix = alsaaudio.Mixer() 
+    mix.setvolume(30)
 
     # Files
     all_files=[]
     for (dirpath, dirnames, filenames) in walk('/home/pi/jukidbox_store'):
-        all_files.extend([dirpath + file for file in filenames])
+        all_files.extend([path.join(dirpath, file) for file in filenames])
 
-    try: 
-        with Board() as board:
-          while True:
-            print('Press button to start.')
-            board.button.wait_for_press()
+    while True:
+        leds.update(Leds.rgb_on((0, 8, 0)))
+        try: 
+            with Board() as board:
+              while True:
+                print('Press button to start.')
+                board.button.wait_for_press()
 
-            done = threading.Event()
-            board.button.when_pressed = done.set
+                done = threading.Event()
+                board.button.when_pressed = done.set
 
-            print('Playing...')
-            leds.update(Leds.rgb_pattern(Color.PURPLE))
-            # Get random file
-            file = numpy.random.choice(all_files)
-            print(file) 
-            pygame.mixer.music.load(file)
-            pygame.mixer.music.play()
+                print('Playing...')
+                leds.update(Leds.rgb_pattern(Color.PURPLE))
+                # Get random file
+                file = numpy.random.choice(all_files)
+                print(file) 
+                pygame.mixer.music.load(file)
+                pygame.mixer.music.play(-1)
 
-            while mixer.music.get_busy(): 
-                if done.is_set():
-                    leds.update(Leds.rgb_on((32, 0, 0)))
-                    mixer.music.stop()
-                time.sleep(0.5) 
+                while mixer.music.get_busy(): 
+                    if done.is_set():
+                        leds.update(Leds.rgb_on((32, 0, 0)))
+                        mixer.music.stop()
+                    time.sleep(0.5) 
 
-            print("Finished ..")
-            leds.update(Leds.rgb_on((0, 8, 0)))
-    except:
-        leds.update(Leds.rgb_on(Color.YELLOW))
+                print("Finished ..")
+                leds.update(Leds.rgb_on((0, 8, 0)))
+        except Exception as e:
+            print(e) 
+            leds.update(Leds.rgb_on(Color.YELLOW))
+            time.sleep(2) 
 
 if __name__ == '__main__':
     main()
